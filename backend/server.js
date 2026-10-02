@@ -2,9 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
+
 const connectDB = require('./config/db');
 
-// Load environment variables
+const authRoutes = require('./routes/authRoutes');
+const linkRoutes = require('./routes/linkRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+const redirectRoutes = require('./routes/redirectRoutes');
+
 dotenv.config();
 
 // Connect to MongoDB
@@ -12,54 +17,68 @@ connectDB();
 
 const app = express();
 
+// Trust Render's reverse proxy
+// Required for express-rate-limit to correctly handle
+// X-Forwarded-For headers in production.
+app.set('trust proxy', 1);
+
 // CORS configuration
-const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173'
-];
+const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Allow all in dev mode for convenience
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true
+  })
+);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Cookie parser
 app.use(cookieParser());
 
-// API Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/links', require('./routes/linkRoutes'));
-app.use('/api/profile', require('./routes/profileRoutes'));
-app.use('/r', require('./routes/redirectRoutes'));
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Global 404 handler for unknown API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ success: false, message: 'API Endpoint Not Found' });
-});
-
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('[Global Error Handler]:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error'
+// Health check
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'LynkHub API is running',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/links', linkRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/r', redirectRoutes);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Global Error:', err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error'
+  });
+});
+
+// Server
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-  console.log(`[Server] Running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(
+    `[Server] Running on port ${PORT} in ${
+      process.env.NODE_ENV || 'development'
+    } mode`
+  );
 });
