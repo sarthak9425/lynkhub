@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
@@ -12,19 +12,21 @@ let isRefreshing = false;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
       prom.resolve(token);
     }
   });
+
   failedQueue = [];
 };
 
 // Response Interceptor for silent JWT Token Refresh
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
@@ -48,13 +50,17 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        // Use the same configured API instance
+        await api.post('/auth/refresh');
+
         processQueue(null);
         isRefreshing = false;
+
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
+
         return Promise.reject(refreshError);
       }
     }
