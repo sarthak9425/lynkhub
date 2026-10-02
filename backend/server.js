@@ -22,24 +22,54 @@ const app = express();
 // X-Forwarded-For headers in production.
 app.set('trust proxy', 1);
 
-// CORS configuration
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+// ==================================================
+// CORS CONFIGURATION
+// ==================================================
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://lynkhub.vercel.app',
+  'https://lynkhub-git-main-lynk-hub.vercel.app'
+];
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: function (origin, callback) {
+      // Allow requests without an Origin header
+      // (Postman, server-to-server requests, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
+    },
     credentials: true
   })
 );
 
-// Body parsers
+// ==================================================
+// BODY PARSERS
+// ==================================================
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Cookie parser
+// ==================================================
+// COOKIE PARSER
+// ==================================================
+
 app.use(cookieParser());
 
-// Health check
+// ==================================================
+// HEALTH CHECK
+// ==================================================
+
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -48,13 +78,19 @@ app.get('/', (req, res) => {
   });
 });
 
-// API routes
+// ==================================================
+// API ROUTES
+// ==================================================
+
 app.use('/api/auth', authRoutes);
 app.use('/api/links', linkRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/r', redirectRoutes);
 
-// 404 handler
+// ==================================================
+// 404 HANDLER
+// ==================================================
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -62,7 +98,10 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
+// ==================================================
+// GLOBAL ERROR HANDLER
+// ==================================================
+
 app.use((err, req, res, next) => {
   console.error('Global Error:', err);
 
@@ -72,7 +111,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Server
+// ==================================================
+// SERVER
+// ==================================================
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
