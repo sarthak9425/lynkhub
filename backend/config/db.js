@@ -1,30 +1,41 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
 
+// Fix MongoDB Atlas SRV DNS resolution issue
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/shortlink_biohub';
-  
+  const uri =
+    process.env.MONGODB_URI ||
+    'mongodb://127.0.0.1:27017/shortlink_biohub';
+
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of hanging
+      serverSelectionTimeoutMS: 5000
     });
-    
+
     console.log(`\n==================================================`);
     console.log(`[MongoDB] Connected Successfully!`);
     console.log(`Host: ${conn.connection.host}`);
     console.log(`Database Name: ${conn.connection.name}`);
-    console.log(`MongoDB Compass Connection URI: ${uri}`);
+
+    // Detect actual MongoDB connection type
+    if (conn.connection.host.includes('mongodb.net')) {
+      console.log(`Connection Type: MongoDB Atlas`);
+    } else {
+      console.log(`Connection Type: Local MongoDB`);
+    }
+
     console.log(`==================================================\n`);
   } catch (error) {
     console.error(`\n==================================================`);
     console.error(`[MongoDB Connection Error]: ${error.message}`);
     console.error(`--------------------------------------------------`);
-    console.error(`Tips to connect with MongoDB Compass / Local MongoDB:`);
-    console.error(`1. Ensure MongoDB service is running on your Windows machine.`);
-    console.error(`   (Open Services -> MongoDB Server -> Start)`);
-    console.error(`2. Open MongoDB Compass and connect to: mongodb://127.0.0.1:27017`);
-    console.error(`3. The database 'shortlink_biohub' will be created automatically upon signup!`);
+    console.error(`MongoDB connection failed.`);
+    console.error(`Check your MONGODB_URI and MongoDB Atlas configuration.`);
     console.error(`==================================================\n`);
-    // Do not exit process immediately so server stays up and reports API status
+
+    // Keep server running
   }
 };
 
