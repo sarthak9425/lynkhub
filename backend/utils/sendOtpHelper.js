@@ -61,13 +61,17 @@ const sendOtpCode = async ({
         process.env.SMTP_SECURE === 'true';
 
       console.log(
-        `[SMTP] Connecting to ${process.env.SMTP_HOST}:${smtpPort} secure=${smtpSecure}`
+        `[SMTP] Connecting to ${process.env.SMTP_HOST}:${smtpPort} secure=${smtpSecure} IPv4=true`
       );
 
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: smtpPort,
         secure: smtpSecure,
+
+        // Force IPv4 connection
+        family: 4,
+
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
@@ -205,6 +209,11 @@ const sendOtpCode = async ({
       console.error(
         '[Nodemailer Response]:',
         err.response || 'NO RESPONSE'
+      );
+
+      console.error(
+        '[SMTP] Full Error:',
+        err
       );
     }
   } else {
